@@ -44,7 +44,7 @@ app.post('/api/process', (req, res) => {
 app.post('/api/scrape/info', async (req, res) => {
   const  url  = await req.body.inputValue;
   const browser =await firefox.launch({
-    headless: true,
+    headless: false,
 });
   const context=await browser.newContext();
   const page = await context.newPage(); 
@@ -70,13 +70,19 @@ app.post('/api/scrape/info', async (req, res) => {
 
 
 //this get all the post links, this is for testing if everything seems right this will be add to one api
-app.post('/api/scrape/posts', async (req, res) => {
-  const  url  = await req.body.inputValue;
+app.get('/api/scrape/posts', async (req, res) => {
+  const  url  = await req.query.inputValue;
   const browser = await firefox.launch({ headless: false });
   const context = await browser.newContext();
   const page = await context.newPage();
   const uniqueLinks = new Set();
-  const limit=10;
+  //do sse naja
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+
   try {
     await page.goto(url);
     await page.getByRole('textbox', { name: 'Email address or phone number' }).click();
@@ -115,6 +121,7 @@ app.post('/api/scrape/posts', async (req, res) => {
                 {postLink:cleanUrl,
                 timeStamp:postTime,
                 });
+                res.write(`data: ${JSON.stringify({ post: cleanUrl, postTime: postTime })}\n\n`);
             }
           }
         }
@@ -130,8 +137,9 @@ app.post('/api/scrape/posts', async (req, res) => {
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await page.waitForTimeout(1000); // Wait for lazy-loaded content
     }
-    const results = Array.from(uniqueLinks).map(e => ({ post: e.postLink,postTime:e.timeStamp}));
-    res.status(200).json({ profileUrl: url, posts: results });
+    // const results = Array.from(uniqueLinks).map(e => ({ post: e.postLink,postTime:e.timeStamp}));
+    // res.status(200).json({ profileUrl: url, posts: results });
+    res.end()
   } catch (error) {
     console.error('An error occurred:', error);
     res.status(500).json({ error: 'Scraping failed', details: error.message });

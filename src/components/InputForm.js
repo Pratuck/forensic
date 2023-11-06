@@ -1,6 +1,5 @@
-import React from 'react';
 
-function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, setIsSubmitting ,setPostResult}) {
+function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, setIsSubmitting, setPostResult }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,34 +15,34 @@ function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, set
           },
           body: JSON.stringify({ inputValue }),
         });
-  
+
         if (infoResponse.ok) {
           const infoData = await infoResponse.json();
           setInfoResult(infoData.result); 
-  
-          const postResponse = await fetch('http://localhost:5000/api/scrape/posts', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ inputValue }),
-          });
-  
-          if (postResponse.ok) {
-            const postData = await postResponse.json();
-            setPostResult(postData.posts); // Use 'results' here instead of 'result'
-          }else {
-            console.error('Error with the second request');
-            // Handle the second request's non-OK response
-          }
+
+          // Instead of making a second POST request, open an SSE connection
+          const eventSource = new EventSource(`http://localhost:5000/api/scrape/posts?inputValue=${encodeURIComponent(inputValue)}`);
+
+          eventSource.onmessage = (event) => {
+            const newPost = JSON.parse(event.data);
+            setPostResult((prevPosts) => [...prevPosts, newPost]);
+          };
+
+          eventSource.onerror = (error) => {
+            console.error('EventSource failed:', error);
+            eventSource.close();
+            setIsSubmitting(false);
+          };
+
+          // No need to handle the response like a typical fetch request
         } else {
           console.error('Error with the first request');
           // Handle the first request's non-OK response
+          setIsSubmitting(false);
         }
       } catch (error) {
         console.error('Error:', error);
-      } finally {
-        setIsSubmitting(false); 
+        setIsSubmitting(false);
       }
     }
   };
