@@ -12,6 +12,9 @@ function PostResult({ postResult }) {
                 <a href={posts.post} target="_blank" rel="noopener noreferrer">
                   {posts.post}
                 </a>
+                <span>
+                    {posts.postTime}
+                  </span>
               </li>
             ))}
           </ul>

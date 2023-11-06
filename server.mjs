@@ -94,15 +94,14 @@ app.post('/api/scrape/posts', async (req, res) => {
       for (const element of elements) {
         if (await element.isVisible()) {
           await element.hover();
-          await page.waitForTimeout(5000); // Wait for JavaScript to update the link
-
+          await page.waitForTimeout(5000); 
           // Get the new href attribute
           const fullHref = await element.getAttribute('href');
+          const postTime= await page.locator('//span[@class="x193iq5w xeuugli x13faqbe x1vvkbs x10flsy6 x1nxh6w3 x1sibtaa xo1l8bm xzsf02u x1yc453h"]').allTextContents()
           if (fullHref && fullHref !== '#') {
             // Parse the URL and process it based on its structure
             const urlObj = new URL(fullHref);
             let cleanUrl = '';
-
             if (urlObj.pathname.includes('/posts/')) {
               // Extract the part of the URL before any query parameters
               cleanUrl = `https://${urlObj.hostname}${urlObj.pathname}`;
@@ -112,7 +111,10 @@ app.post('/api/scrape/posts', async (req, res) => {
             }
 
             if (cleanUrl) {
-              uniqueLinks.add(cleanUrl);
+              uniqueLinks.add(
+                {postLink:cleanUrl,
+                timeStamp:postTime,
+                });
             }
           }
         }
@@ -128,7 +130,7 @@ app.post('/api/scrape/posts', async (req, res) => {
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await page.waitForTimeout(1000); // Wait for lazy-loaded content
     }
-    const results = Array.from(uniqueLinks).map(link => ({ post: link }));
+    const results = Array.from(uniqueLinks).map(e => ({ post: e.postLink,postTime:e.timeStamp}));
     res.status(200).json({ profileUrl: url, posts: results });
   } catch (error) {
     console.error('An error occurred:', error);
