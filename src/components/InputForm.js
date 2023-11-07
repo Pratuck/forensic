@@ -1,4 +1,4 @@
-
+import React from 'react';
 function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, setIsSubmitting, setPostResult }) {
 
   const handleSubmit = async (e) => {

@@ -17,7 +17,7 @@ app.use(bodyParser.json());
 // Allow requests from your React app's domain (replace with your React app's URL)
 const allowedOrigins = ['http://localhost:3000'];
 
-//this support server&web cooperative
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -27,8 +27,10 @@ app.use(
         callback(new Error('Not allowed by CORS'));
       }
     },
+    credentials: true
   })
 );
+app.options('*', cors()); // include before other routes
 
 //this is for testing 
 app.post('/api/process', (req, res) => {
@@ -71,7 +73,7 @@ app.post('/api/scrape/info', async (req, res) => {
 
 //this get all the post links, this is for testing if everything seems right this will be add to one api
 app.get('/api/scrape/posts', async (req, res) => {
-  const  url  = await req.query.inputValue;
+  const  url  =  req.query.inputValue;
   const browser = await firefox.launch({ headless: false });
   const context = await browser.newContext();
   const page = await context.newPage();
@@ -126,9 +128,7 @@ app.get('/api/scrape/posts', async (req, res) => {
           }
         }
       }
-      if(uniqueLinks.size>=10){
-        break;
-      }
+
       if (uniqueLinks.size === previousLength) {
         break; // No new links found, probably reached the bottom
       }
