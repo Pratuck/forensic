@@ -4,6 +4,7 @@ import InputForm from '../components/InputForm';
 import InfoResult from '../components/InfoResult';
 import PostResult from '../components/PostResult';
 
+
 function Home({
   inputValue,
   setInputValue,
@@ -12,7 +13,9 @@ function Home({
   isSubmitting,
   setIsSubmitting,
   postResult,
-  setPostResult
+  setPostResult,
+  setProjectName,
+  projectName
 }) {
   // Render InputForm and InfoResult with the props if needed
   return (
@@ -26,6 +29,8 @@ function Home({
         isSubmitting={isSubmitting}
         setIsSubmitting={setIsSubmitting}
         setPostResult={setPostResult}
+        setProjectName={setProjectName}
+        projectName={projectName}
       />
       <InfoResult infoResult={infoResult} />
       <PostResult postResult={postResult}/>

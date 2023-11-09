@@ -6,6 +6,7 @@ import Home from './pages/index.js'; // Make sure to import the correct Home com
 
 function App() {
   const [inputValue, setInputValue] = useState('');
+  const [projectName,setProjectName]=useState('')
   const [infoResult, setInfoResult] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postResult,setPostResult]=useState('')
@@ -24,6 +25,8 @@ function App() {
             setIsSubmitting={setIsSubmitting}
             postResult={postResult}
             setPostResult={setPostResult}
+            projectName={projectName}
+            setProjectName={setProjectName}
           />
         } />
       </Routes>

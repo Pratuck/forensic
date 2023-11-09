@@ -1,5 +1,5 @@
 import React from 'react';
-function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, setIsSubmitting, setPostResult }) {
+function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, setIsSubmitting, setPostResult ,setProjectName,projectName}) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,8 +15,15 @@ function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, set
           },
           body: JSON.stringify({ inputValue }),
         });
+        const neo4jResponse= await fetch('http://localhost:5000/api/create-neo4j-session',{
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ projectName }),
+        })
 
-        if (infoResponse.ok) {
+        if (infoResponse.ok &&neo4jResponse.ok) {
           const infoData = await infoResponse.json();
           setInfoResult(infoData.result); 
 
@@ -52,6 +59,7 @@ function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, set
     setIsSubmitting(false); // Allow submission again
     setInfoResult(''); // Optionally reset the result if needed
     setPostResult('');
+    setProjectName('');
   };
 
   return (
@@ -64,6 +72,16 @@ function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, set
           onChange={(e) => setInputValue(e.target.value)}
           disabled={isSubmitting}
         />
+      </label>
+        Project Name:
+        <input
+        type="text"
+        value={projectName}
+        onChange={(e)=>setProjectName(e.target.value)}
+        disabled={isSubmitting}
+        >
+        </input>
+      <label>
       </label>
       <button type="submit" disabled={isSubmitting}>
         Submit
