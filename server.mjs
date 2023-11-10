@@ -37,7 +37,7 @@ app.post('/api/create-neo4j-session', async (req, res) => {
   const driver = neo4j.driver(process.env.NEO4J_URL, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASS))
   const projectName = req.body.projectName
   const session = driver.session({ database: process.env.NEO4J_DB })
-  let projectTime = new Date(); 
+  let projectTime = new Date();
 
   // Convert the Date object to an ISO 8601 string
   projectTime = projectTime.toISOString();
@@ -142,63 +142,190 @@ app.get('/api/scrape/posts', async (req, res) => {
             if (urlObj.pathname.includes('/posts/')) {
               // Extract the part of the URL before any query parameters
               cleanUrl = `https://${urlObj.hostname}${urlObj.pathname}`;
-        
+
 
             } else if (urlObj.pathname.includes('/permalink.php')) {
               // Reconstruct the URL with only the desired query parameters
               cleanUrl = `https://${urlObj.hostname}${urlObj.pathname}?story_fbid=${urlObj.searchParams.get('story_fbid')}&id=${urlObj.searchParams.get('id')}`;
             }
 
-            if (cleanUrl&&limit <= 10) {
+            if (cleanUrl && limit <= 10) {
               console.log("state1")
               const urlObjInput = new URL(url);
               //if web use &id but with www use ?id
               if (urlObjInput.pathname.includes('/profile.php')) {
                 console.log("state 1.1")
                 const fixName = profileName.trim();
-                const cleanedProfilUrl=`https://${urlObjInput.hostname}${urlObjInput.pathname}?id=${urlObjInput.searchParams.get('id')}`
-                try{
-                await session.run(
-                  `
+                const cleanedProfilUrl = `https://${urlObjInput.hostname}${urlObjInput.pathname}?id=${urlObjInput.searchParams.get('id')}`
+                try {
+                  await session.run(
+                    `
                   MERGE (p:Post {postUrl: $cleanUrl, datetime: $postTime})
                   MERGE (a:Account {profileUrl: $cleanedProfilUrl})
                     ON CREATE SET a.username = $fixName
                   MERGE (a)-[:POSTED]->(p)
                     `
-                  ,
-                  { "cleanUrl": cleanUrl, "postTime": postTime, "fixName": fixName, "cleanedProfilUrl": cleanedProfilUrl }
-                )
-                }catch(err){
+                    ,
+                    { "cleanUrl": cleanUrl, "postTime": postTime, "fixName": fixName, "cleanedProfilUrl": cleanedProfilUrl }
+                  )
+                } catch (err) {
                   console.log(err)
                 }
-              }else{
+              } else {
                 console.log(urlObjInput.pathname)
                 console.log("state 1.2")
-                const cleanedProfilUrl=`https://${urlObjInput.hostname}${urlObjInput.pathname}`
+                const cleanedProfilUrl = `https://${urlObjInput.hostname}${urlObjInput.pathname}`
                 const fixName = profileName.trim();
-                try{
-                await session.run(
-                  `
+                try {
+                  await session.run(
+                    `
                   MERGE (p:Post {postUrl: $cleanUrl, datetime: $postTime})
                   MERGE (a:Account {profileUrl: $cleanedProfilUrl})
                     ON CREATE SET a.username = $fixName
                   MERGE (a)-[:POSTED]->(p)
                    `
-                  ,
-                  { "cleanUrl": cleanUrl, "postTime": postTime, "fixName": fixName, "cleanedProfilUrl": cleanedProfilUrl }
-                )}catch(err){
+                    ,
+                    { "cleanUrl": cleanUrl, "postTime": postTime, "fixName": fixName, "cleanedProfilUrl": cleanedProfilUrl }
+                  )
+                } catch (err) {
                   console.log(err)
                 }
               }
               console.log("state1.5")
-              //maybe doing some post scrape here, hopefully it will work ;D
-              try{
+              //maybe doing some post scrape here, hopefully it will work ;D, also Commenter
+              try {
                 console.log("state2")
                 const pageLiker = await context.newPage();
                 const uniqueLikerLinks = new Set();
                 let previousLengthLiker = 0;
                 pageLiker.goto(cleanUrl)
                 await pageLiker.waitForLoadState('networkidle');
+
+
+                //go for comment before liker
+                await pageLiker.locator('(//div[@dir="auto"])[1]').scrollIntoViewIfNeeded()
+                const text = pageLiker.locator('(//div[@dir="auto"])[1]')
+                const postText = await text.allTextContents()
+                const comments = await pageLiker.$$('//div[@class="x1r8uery x1iyjqo2 x6ikm8r x10wlt62 x1pi30zi"]')
+                //if there is link component inside the text maybe we should add link identifier here
+                console.log("pass comments finding")
+                //if there is comment we will check whether the content is malicious or there is any exist link
+                if (comments.length !== 0) {
+                  for (const comment of comments) {
+                    try {
+                      const timeComponent = await comment.$('//div//a[@class="x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xt0psk2 xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1a2a7pz xt0b8zv xi81zsa xo1l8bm"]')
+                      await timeComponent.hover()
+                      await pageLiker.waitForTimeout(1500)
+                      await pageLiker.waitForSelector('//span[@class="x193iq5w xeuugli x13faqbe x1vvkbs x10flsy6 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x1tu3fi x3x7a5m x1nxh6w3 x1sibtaa xo1l8bm xzsf02u x1yc453h"]')
+                      const commentTime = await pageLiker.locator('//span[@class="x193iq5w xeuugli x13faqbe x1vvkbs x10flsy6 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x1tu3fi x3x7a5m x1nxh6w3 x1sibtaa xo1l8bm xzsf02u x1yc453h"]').allTextContents()
+                      const nameComponent = await comment.$('//span[@class="x193iq5w xeuugli x13faqbe x1vvkbs x10flsy6 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x1tu3fi x3x7a5m x1nxh6w3 x1sibtaa x1s688f xzsf02u"]')
+                      const commentName = await nameComponent.textContent()
+                      const commentHead = await comment.$('//span[@class="xt0psk2"]//a')
+                      //get commenter
+                      const commentUrl = await commentHead?.getAttribute("href")
+                      const commentContent = await comment.$('//div[@class="xdj266r x11i5rnm xat24cr x1mh8g0r x1vvkbs"]')
+                      //get commentContent
+                      const commentText = await commentContent?.textContent()
+                      try {
+                        //clean the comment url then ingest to neo4j
+                        const commentUrlObj = new URL(commentUrl);
+
+                        if (commentUrlObj.hostname === 'web.facebook.com') {
+                          commentUrlObj.hostname = 'www.facebook.com';
+                        }
+                        //build the commenter nodes
+                        if (commentUrlObj.pathname.includes('/profile.php')) {
+                          const cleanCommentUrl = `https://${commentUrlObj.hostname}${commentUrlObj.pathname}?id=${commentUrlObj.searchParams.get('id')}&comment_id=${commentUrlObj.searchParams.get('comment_id')}`;
+                          const commenterUrl = `https://${commentUrlObj.hostname}${commentUrlObj.pathname}?id=${commentUrlObj.searchParams.get('id')}`
+                          
+                          try {
+                            const driver = neo4j.driver(process.env.NEO4J_URL, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASS))
+                            const session_forCommenter = driver.session({ database: process.env.NEO4J_DB })
+                            session_forCommenter.run(
+                              `
+                            MATCh (p:Post {postUrl:$cleanUrl})
+                            MERGE (a:Account {profileUrl:$commenterUrl})
+                               ON CREATE SET a.username = $commentName
+                            MERGE (c:Comment {commentUrl:$cleanCommentUrl,postTime:$commentTime,text:$commentText})
+                            SET p.text=$postText
+                            MERGE (a)-[:POSTED]->(c)
+                            MERGE (c)-[:REPLIED]->(p)
+
+                            `, {
+                              "cleanUrl": cleanUrl,
+                              "cleanCommentUrl": cleanCommentUrl,
+                              "commentTime": commentTime,
+                              "commenterUrl": commenterUrl,
+                              "postText": postText,
+                              "commentName": commentName.trim(),
+                              "commentText": commentText
+                            }
+                            )
+                          } catch (err) {
+                            console.log(`error during ingest comment${err}`)
+                          }
+                        } else {
+                          const cleanCommentUrl = `https://${commentUrlObj.hostname}${commentUrlObj.pathname}?comment_id=${commentUrlObj.searchParams.get('comment_id')}`;
+                          const commenterUrl = `https://${commentUrlObj.hostname}${commentUrlObj.pathname}`;
+                          try {
+                            const driver = neo4j.driver(process.env.NEO4J_URL, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASS))
+                            const session_forCommenter = driver.session({ database: process.env.NEO4J_DB })
+                            session_forCommenter.run(
+                              `
+                              MATCh (p:Post {postUrl:$cleanUrl})
+                              MERGE (a:Account {profileUrl:$commenterUrl})
+                                 ON CREATE SET a.username = $commentName
+                              MERGE (c:Comment {commentUrl:$cleanCommentUrl,postTime:$commentTime,text:$commentText})
+                              SET p.text=$postText
+                              MERGE (a)-[:POSTED]->(c)
+                              MERGE (c)-[:REPLIED]->(p)
+                              `, {
+                              "cleanUrl": cleanUrl,
+                              "cleanCommentUrl": cleanCommentUrl,
+                              "commentTime": commentTime,
+                              "commenterUrl": commenterUrl,
+                              "postText": postText,
+                              "commentName": commentName.trim(),
+                              "commentText": commentText
+                            }
+                            )
+                          } catch (err) {
+                            console.log(`error at comment ingestion${err}`)
+                          }
+
+                        }
+
+                      } catch {
+                        console.log("error during comment ingestion")
+                      }
+                    } catch (err) {
+                      console.log("error in comment scraping section", err)
+                    }
+
+                  }
+                } else {
+                  console.log("No comment")
+                  try {
+                    const driver = neo4j.driver(process.env.NEO4J_URL, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASS))
+                    const session_forNoCommenter = driver.session({ database: process.env.NEO4J_DB })
+                    session_forNoCommenter.run(
+                      `
+                    MATCh (p:Post {postUrl:$cleanUrl})
+                    SET p.text=$postText
+
+                    `, {
+                      "cleanUrl": cleanUrl,
+                      "postText": postText,
+                    }
+                    )
+                  } catch (err) {
+                    console.log(`error during ingest comment${err}`)
+                  }
+
+                }
+                //end of commenter&post additional information
+
+
                 const exists = await pageLiker.$$('//div[@class="x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1n2onr6 x87ps6o x1lku1pv x1a2a7pz x1heor9g xnl1qt8 x6ikm8r x10wlt62 x1vjfegm x1lliihq"]');
                 if (exists.length !== 0) {
                   const allReactionsButtonLocator = pageLiker.locator('//div[@class="x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1n2onr6 x87ps6o x1lku1pv x1a2a7pz x1heor9g xnl1qt8 x6ikm8r x10wlt62 x1vjfegm x1lliihq"]');
@@ -220,49 +347,54 @@ app.get('/api/scrape/posts', async (req, res) => {
                           if (urlObj.pathname.includes('/profile.php')) {
                             const cleanLikerUrl = `https://${urlObj.hostname}${urlObj.pathname}?id=${urlObj.searchParams.get('id')}`
                             uniqueLikerLinks.add(cleanUrl);
-                          
-                            await session.run(
-                            `MATCH (p:Post {postUrl: $cleanUrl})
+                            const driver = neo4j.driver(process.env.NEO4J_URL, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASS))
+                            const session_forLiker = driver.session({ database: process.env.NEO4J_DB })
+                            await session_forLiker.run(
+                              `MATCH (p:Post {postUrl: $cleanUrl,postContent:$postText})
                              MERGE (a:Account {profileUrl:$cleanLikerUrl})
                                  ON CREATE SET a.username = $profileName
                              MERGE (a)-[:REACTED]->(p)`
-                            ,
-                            { "cleanUrl": cleanUrl.replace(/ /g,''), "profileName": profileName, "cleanLikerUrl": cleanLikerUrl.replace(/ /g,'') }
-                          )
+                              ,
+                              { "cleanUrl": cleanUrl, "profileName": profileName, "cleanLikerUrl": cleanLikerUrl, "postText": postText }
+                            )
                           } else {
                             const cleanLikerUrl = `https://${urlObj.hostname}${urlObj.pathname}`
                             uniqueLikerLinks.add(cleanUrl);
-                            await session.run(
-                            `MATCH (p:Post {postUrl: $cleanUrl})
+                            const driver = neo4j.driver(process.env.NEO4J_URL, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASS))
+                            const session_forLiker = driver.session({ database: process.env.NEO4J_DB })
+                            await session_forLiker.run(
+                              `MATCH (p:Post {postUrl: $cleanUrl,postContent:$postText})
                              MERGE (a:Account {profileUrl:$cleanLikerUrl})
                                  ON CREATE SET a.username = $profileName
                              MERGE (a)-[:REACTED]->(p)`
-                            ,
-                            { "cleanUrl": cleanUrl, "profileName": profileName, "cleanLikerUrl": cleanLikerUrl }
-                          )
+                              ,
+                              { "cleanUrl": cleanUrl, "profileName": profileName, "cleanLikerUrl": cleanLikerUrl, "postText": postText }
+                            )
+                          }
                         }
                       }
                     }
-                  }
-                  if (uniqueLikerLinks.size === previousLengthLiker) {
-                    break; // No new links found, probably reached the bottom
-                  }
-                  previousLengthLiker = uniqueLikerLinks.size;
-
-                  await pageLiker.evaluate(() => {
-                    const element = document.querySelector('div.xb57i2i:nth-child(1)'); //this is the liker frame
-                    if (element) {
-                      element.scrollTop = element.scrollHeight; // Scrolls to the bottom
+                    if (uniqueLikerLinks.size === previousLengthLiker) {
+                      break; // No new links found, probably reached the bottom
                     }
-                  }
-                  );
-                  await pageLiker.waitForTimeout(1000);
+                    previousLengthLiker = uniqueLikerLinks.size;
 
+                    await pageLiker.evaluate(() => {
+                      const element = document.querySelector('div.xb57i2i:nth-child(1)'); //this is the liker frame
+                      if (element) {
+                        element.scrollTop = element.scrollHeight; // Scrolls to the bottom
+                      }
+                    }
+                    );
+                    await pageLiker.waitForTimeout(1000);
+
+                  }
+                  await pageLiker.close()
+                } else {
+                  console.log("No liker")
+                  await pageLiker.close()
                 }
-                await pageLiker.close()
-              }else{
-                console.log("No liker")
-              }}catch(err){
+              } catch (err) {
                 console.log(err)
               }
 
