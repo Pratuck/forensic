@@ -49,10 +49,10 @@ app.post('/api/create-neo4j-session', async (req, res) => {
       ,
       { "projectName": projectName, "projectTime": projectTime }
     )
-    res.json({ message: `Database '${projectName}' created successfully.` });
+    res.json({ message: ` '${projectName}' created successfully.` });
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({ error: `Error connecting database '${projectName}'.` });
+    res.status(500).json({ error: `Error connecting  '${projectName}'.` });
   }
 })
 
@@ -112,27 +112,33 @@ app.get('/api/scrape/posts', async (req, res) => {
     await page.locator('#login_popup_cta_form').getByRole('textbox', { name: 'Password' }).click();
     await page.locator('#login_popup_cta_form').getByRole('textbox', { name: 'Password' }).fill(process.env.FACEBOOK_PASS);
     await page.locator('#login_popup_cta_form').getByLabel('Accessible login button').click();
+    await page.waitForTimeout(1000)
     await page.waitForLoadState('networkidle');
     let previousLength = 0;
+    await page.waitForSelector("h1.x1heor9g")
     const profileName = await page.locator("h1.x1heor9g").textContent();
     while (true) {
       const elements = await page.$$('//div[@class="x1cy8zhl x78zum5 x1q0g3np xod5an3 x1pi30zi x1swvt13 xz9dl7a"]//a[@href="#"]');
+      console.log("getting href...")
       if (elements.length === 0) break; // If no such elements, exit the loop
 
       for (const element of elements) {
+        console.log("get first element...")
         if (await element.isVisible()) {
           await element.hover();
           await page.waitForTimeout(1000);
           // Get the new href attribute
           const fullHref = await element.getAttribute('href');
+          await page.waitForSelector('//span[@class="x193iq5w xeuugli x13faqbe x1vvkbs x10flsy6 x1nxh6w3 x1sibtaa xo1l8bm xzsf02u x1yc453h"]')
           const postTime = await page.locator('//span[@class="x193iq5w xeuugli x13faqbe x1vvkbs x10flsy6 x1nxh6w3 x1sibtaa xo1l8bm xzsf02u x1yc453h"]').allTextContents()
           if (fullHref && fullHref !== '#') {
             // Parse the URL and process it based on its structure
+            console.log("continueing")
             const urlObj = new URL(fullHref);
+            let cleanUrl = '';
             if (urlObj.hostname === 'web.facebook.com') {
               urlObj.hostname = 'www.facebook.com';
             }
-            let cleanUrl = '';
             if (urlObj.pathname.includes('/posts/')) {
               // Extract the part of the URL before any query parameters
               cleanUrl = `https://${urlObj.hostname}${urlObj.pathname}`;
@@ -143,58 +149,96 @@ app.get('/api/scrape/posts', async (req, res) => {
               cleanUrl = `https://${urlObj.hostname}${urlObj.pathname}?story_fbid=${urlObj.searchParams.get('story_fbid')}&id=${urlObj.searchParams.get('id')}`;
             }
 
-            if (cleanUrl && limit <= 10) {
-              await session.run(
-                `MERGE (p:Post {postUrl: $cleanUrl,datetime: $postTime})
-                 MERGE (a:Account {profileUrl:$profileUrl, username:$profileName}) 
-                 MERGE (a)-[:POSTED]->(p)`
-                ,
-                { "cleanUrl": cleanUrl.replace(/ /g,''), "postTime": postTime, "profileName": profileName, "profileUrl": url.replace(/ /g,'') }
-              )
+            if (cleanUrl&&limit <= 10) {
+              console.log("state1")
+              const urlObjInput = new URL(url);
+              //if web use &id but with www use ?id
+              if (urlObjInput.pathname.includes('/profile.php')) {
+                console.log("state 1.1")
+                const fixName = profileName.trim();
+                const cleanedProfilUrl=`https://${urlObjInput.hostname}${urlObjInput.pathname}?id=${urlObjInput.searchParams.get('id')}`
+                try{
+                await session.run(
+                  `
+                  MERGE (p:Post {postUrl: $cleanUrl, datetime: $postTime})
+                  MERGE (a:Account {profileUrl: $cleanedProfilUrl})
+                    ON CREATE SET a.username = $fixName
+                  MERGE (a)-[:POSTED]->(p)
+                    `
+                  ,
+                  { "cleanUrl": cleanUrl, "postTime": postTime, "fixName": fixName, "cleanedProfilUrl": cleanedProfilUrl }
+                )
+                }catch(err){
+                  console.log(err)
+                }
+              }else{
+                console.log(urlObjInput.pathname)
+                console.log("state 1.2")
+                const cleanedProfilUrl=`https://${urlObjInput.hostname}${urlObjInput.pathname}`
+                const fixName = profileName.trim();
+                try{
+                await session.run(
+                  `
+                  MERGE (p:Post {postUrl: $cleanUrl, datetime: $postTime})
+                  MERGE (a:Account {profileUrl: $cleanedProfilUrl})
+                    ON CREATE SET a.username = $fixName
+                  MERGE (a)-[:POSTED]->(p)
+                   `
+                  ,
+                  { "cleanUrl": cleanUrl, "postTime": postTime, "fixName": fixName, "cleanedProfilUrl": cleanedProfilUrl }
+                )}catch(err){
+                  console.log(err)
+                }
+              }
+              console.log("state1.5")
               //maybe doing some post scrape here, hopefully it will work ;D
-              try{const pageLiker = await context.newPage();
-              const uniqueLikerLinks = new Set();
-              let previousLengthLiker = 0;
-              pageLiker.goto(cleanUrl)
-              await pageLiker.waitForLoadState('networkidle');
-              const exists = await pageLiker.$$('//div[@class="x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1n2onr6 x87ps6o x1lku1pv x1a2a7pz x1heor9g xnl1qt8 x6ikm8r x10wlt62 x1vjfegm x1lliihq"]');
-              if (exists.length !== 0) {
-                const allReactionsButtonLocator = pageLiker.locator('//div[@class="x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1n2onr6 x87ps6o x1lku1pv x1a2a7pz x1heor9g xnl1qt8 x6ikm8r x10wlt62 x1vjfegm x1lliihq"]');
-                await allReactionsButtonLocator.click();
-                // await pageLiker.locator('//@div[class="xb57i2i x1q594ok x5lxg6s x78zum5 xdt5ytf x6ikm8r x1ja2u2z x1pq812k x1rohswg xfk6m8 x1yqm8si xjx87ck xx8ngbg xwo3gff x1n2onr6 x1oyok0e x1odjw0f x1e4zzel x1tbbn4q x1y1aw1k x4uap5 xwib8y2 xkhd6sd]"')
-                await pageLiker.waitForSelector('//div[@class="x6s0dn4 xkh2ocl x1q0q8m5 x1qhh985 xu3j5b3 xcfux6l x26u7qi xm0m39n x13fuv20 x972fbf x9f619 x78zum5 x1q0g3np x1iyjqo2 xs83m0k x1qughib xat24cr x11i5rnm x1mh8g0r xdj266r x2lwn1j xeuugli x18d9i69 x4uap5 xkhd6sd xexx8yu x1n2onr6 x1ja2u2z"]')
-                while (true) {
-                  const elements = await pageLiker.$$('//div[@class="x6s0dn4 xkh2ocl x1q0q8m5 x1qhh985 xu3j5b3 xcfux6l x26u7qi xm0m39n x13fuv20 x972fbf x9f619 x78zum5 x1q0g3np x1iyjqo2 xs83m0k x1qughib xat24cr x11i5rnm x1mh8g0r xdj266r x2lwn1j xeuugli x18d9i69 x4uap5 xkhd6sd xexx8yu x1n2onr6 x1ja2u2z"]//a');
-                  if (elements.length === 0) break;
-                  for (const element of elements) {
-                    if (await element.isVisible()) {
-                      const fullHref = await element.getAttribute('href');
-                      const profileName = await element.textContent();
-                      if (fullHref) {
-                        const urlObj = new URL(fullHref);
-                        if (urlObj.hostname === 'web.facebook.com') {
-                          urlObj.hostname = 'www.facebook.com';
-                        }
-                        if (urlObj.pathname.includes('/profile.php')) {
-                          const cleanLikerUrl = `https://${urlObj.hostname}${urlObj.pathname}&id=${urlObj.searchParams.get('id')}`
-                          uniqueLikerLinks.add(cleanUrl);
+              try{
+                console.log("state2")
+                const pageLiker = await context.newPage();
+                const uniqueLikerLinks = new Set();
+                let previousLengthLiker = 0;
+                pageLiker.goto(cleanUrl)
+                await pageLiker.waitForLoadState('networkidle');
+                const exists = await pageLiker.$$('//div[@class="x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1n2onr6 x87ps6o x1lku1pv x1a2a7pz x1heor9g xnl1qt8 x6ikm8r x10wlt62 x1vjfegm x1lliihq"]');
+                if (exists.length !== 0) {
+                  const allReactionsButtonLocator = pageLiker.locator('//div[@class="x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1n2onr6 x87ps6o x1lku1pv x1a2a7pz x1heor9g xnl1qt8 x6ikm8r x10wlt62 x1vjfegm x1lliihq"]');
+                  await allReactionsButtonLocator.click();
+                  // await pageLiker.locator('//@div[class="xb57i2i x1q594ok x5lxg6s x78zum5 xdt5ytf x6ikm8r x1ja2u2z x1pq812k x1rohswg xfk6m8 x1yqm8si xjx87ck xx8ngbg xwo3gff x1n2onr6 x1oyok0e x1odjw0f x1e4zzel x1tbbn4q x1y1aw1k x4uap5 xwib8y2 xkhd6sd]"')
+                  await pageLiker.waitForSelector('//div[@class="x6s0dn4 xkh2ocl x1q0q8m5 x1qhh985 xu3j5b3 xcfux6l x26u7qi xm0m39n x13fuv20 x972fbf x9f619 x78zum5 x1q0g3np x1iyjqo2 xs83m0k x1qughib xat24cr x11i5rnm x1mh8g0r xdj266r x2lwn1j xeuugli x18d9i69 x4uap5 xkhd6sd xexx8yu x1n2onr6 x1ja2u2z"]')
+                  while (true) {
+                    const elements = await pageLiker.$$('//div[@class="x6s0dn4 xkh2ocl x1q0q8m5 x1qhh985 xu3j5b3 xcfux6l x26u7qi xm0m39n x13fuv20 x972fbf x9f619 x78zum5 x1q0g3np x1iyjqo2 xs83m0k x1qughib xat24cr x11i5rnm x1mh8g0r xdj266r x2lwn1j xeuugli x18d9i69 x4uap5 xkhd6sd xexx8yu x1n2onr6 x1ja2u2z"]//a');
+                    if (elements.length === 0) break;
+                    for (const element of elements) {
+                      if (await element.isVisible()) {
+                        const fullHref = await element.getAttribute('href');
+                        const profileName = await element.textContent();
+                        if (fullHref) {
+                          const urlObj = new URL(fullHref);
+                          if (urlObj.hostname === 'web.facebook.com') {
+                            urlObj.hostname = 'www.facebook.com';
+                          }
+                          if (urlObj.pathname.includes('/profile.php')) {
+                            const cleanLikerUrl = `https://${urlObj.hostname}${urlObj.pathname}?id=${urlObj.searchParams.get('id')}`
+                            uniqueLikerLinks.add(cleanUrl);
                           
-                          await session.run(
+                            await session.run(
                             `MATCH (p:Post {postUrl: $cleanUrl})
-                             MERGE (a:Account {profileUrl:$cleanLikerUrl, username:$profileName}) 
+                             MERGE (a:Account {profileUrl:$cleanLikerUrl})
+                                 ON CREATE SET a.username = $profileName
                              MERGE (a)-[:REACTED]->(p)`
                             ,
                             { "cleanUrl": cleanUrl.replace(/ /g,''), "profileName": profileName, "cleanLikerUrl": cleanLikerUrl.replace(/ /g,'') }
                           )
-                        } else {
-                          const cleanLikerUrl = `https://${urlObj.hostname}${urlObj.pathname}`
-                          uniqueLikerLinks.add(cleanUrl);
-                          await session.run(
+                          } else {
+                            const cleanLikerUrl = `https://${urlObj.hostname}${urlObj.pathname}`
+                            uniqueLikerLinks.add(cleanUrl);
+                            await session.run(
                             `MATCH (p:Post {postUrl: $cleanUrl})
-                             MERGE (a:Account {profileUrl:$cleanLikerUrl, username:$profileName}) 
+                             MERGE (a:Account {profileUrl:$cleanLikerUrl})
+                                 ON CREATE SET a.username = $profileName
                              MERGE (a)-[:REACTED]->(p)`
                             ,
-                            { "cleanUrl": cleanUrl.replace(/ /g,''), "profileName": profileName, "cleanLikerUrl": cleanLikerUrl.replace(/ /g,'') }
+                            { "cleanUrl": cleanUrl, "profileName": profileName, "cleanLikerUrl": cleanLikerUrl }
                           )
                         }
                       }
