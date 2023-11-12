@@ -10,6 +10,9 @@ const Navbar = () => {
 					<NavLink to="/" >
 						Scrape
 					</NavLink>
+					<NavLink to="/view" >
+						View
+					</NavLink>
 					<NavLink to="/Evidence" >
 						Evidence
 					</NavLink>
