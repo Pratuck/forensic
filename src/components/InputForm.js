@@ -1,67 +1,83 @@
-import React from 'react';
-function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, setIsSubmitting, setPostResult ,setProjectName,projectName}) {
+import React, { useState, useRef, useEffect } from 'react';
+
+function InputForm({ inputValue, setInputValue, isSubmitting,setIsSubmitting, setPostResult, setProjectName, projectName }) {
+  const eventSourceRef = useRef(null);
+  const [isEventSourceClosed, setIsEventSourceClosed] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isSubmitting) {
-      setIsSubmitting(true);
+    if (eventSourceRef.current) {
+      console.log('EventSource already exists.');
+      return; // Exit if an EventSource is already open
+    }
 
-      try {
-        // Make the first POST request
-        const infoResponse = await fetch('http://localhost:5000/api/scrape/info', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ inputValue }),
-        });
-        const neo4jResponse= await fetch('http://localhost:5000/api/create-neo4j-session',{
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ projectName }),
-        })
+    setIsSubmitting(true);
 
-        if (infoResponse.ok &&neo4jResponse.ok) {
-          const infoData = await infoResponse.json();
-          setInfoResult(infoData.result); 
+    try {
+      // Your POST fetch logic here
+      await fetch('http://localhost:5000/api/create-neo4j-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ projectName }),
+      });
+    } catch (error) {
+      console.error('Error:', error);
+      setIsSubmitting(false);
+      return; // Exit early if fetch fails
+    }
 
-          // Instead of making a second POST request, open an SSE connection
-          const eventSource = new EventSource(`http://localhost:5000/api/scrape/posts?inputValue=${encodeURIComponent(inputValue)}`);
-
-          eventSource.onmessage = (event) => {
-            const newPost = JSON.parse(event.data);
-            setPostResult((prevPosts) => [...prevPosts, newPost]);
-          };
-
-          eventSource.onerror = (error) => {
-            console.error('EventSource failed:', error);
-            eventSource.close();
-            setIsSubmitting(false);
-          };
-
-          // No need to handle the response like a typical fetch request
-        } else {
-          console.error('Error with the first request');
-          // Handle the first request's non-OK response
+    // Create a new EventSource
+    try {
+      eventSourceRef.current = new EventSource(`http://localhost:5000/api/scrape/posts?inputValue=${encodeURIComponent(inputValue)}`);
+      eventSourceRef.current.onmessage = (event) => {
+        const newPost = JSON.parse(event.data);
+        if(newPost.post==="view"){
+          eventSourceRef.current.close()
+          eventSourceRef.current = null;
+          setIsEventSourceClosed(true); // Ensure this is set to prevent reopening
           setIsSubmitting(false);
         }
-      } catch (error) {
-        console.error('Error:', error);
+        setPostResult((prevPosts) => [...prevPosts, newPost]);
+      };
+
+      eventSourceRef.current.onerror = (event) => {
+        console.log('EventSource error or closed by the server');
+        eventSourceRef.current.close()
+        eventSourceRef.current = null;
+        setIsEventSourceClosed(true); // Ensure this is set to prevent reopening
         setIsSubmitting(false);
-      }
+      };
+    } catch (err) {
+      console.error('EventSource failed:', err);
+      setIsSubmitting(false);
     }
+
+    setIsSubmitting(false);
   };
 
   const handleCancel = () => {
-    setInputValue(''); // Reset the input field
-    setIsSubmitting(false); // Allow submission again
-    setInfoResult(''); // Optionally reset the result if needed
-    setPostResult('');
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    setIsEventSourceClosed(true);
+    setInputValue('');
+    setIsSubmitting(false);
+    setPostResult([]);
     setProjectName('');
   };
 
+  // ...rest of your component
   return (
     <form onSubmit={handleSubmit}>
       <label>
@@ -73,16 +89,13 @@ function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, set
           disabled={isSubmitting}
         />
       </label>
-        Project Name:
-        <input
+      Project Name:
+      <input
         type="text"
         value={projectName}
-        onChange={(e)=>setProjectName(e.target.value)}
+        onChange={(e) => setProjectName(e.target.value)}
         disabled={isSubmitting}
-        >
-        </input>
-      <label>
-      </label>
+      />
       <button type="submit" disabled={isSubmitting}>
         Submit
       </button>
