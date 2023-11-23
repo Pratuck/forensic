@@ -13,7 +13,10 @@ const port = 5000;
 //convert date to be comparable
 function parseDateString(dateStr) {
   const cleanedStr = dateStr.replace(/(^\w+, )|( at )/g, ' ');
-  return new Date(cleanedStr);
+  const date= new Date(cleanedStr);
+  const newHour = date.getUTCHours() + 7;
+  date.setUTCHours(newHour);
+  return date
 }
 
 app.use(bodyParser.json());
@@ -93,8 +96,10 @@ app.post('/api/scrape/info', async (req, res) => {
 app.get('/api/scrape/posts', async (req, res) => {
   const url = req.query.inputValue;
   console.log(req.query.startDate)
+  console.log(req.query.endDate)
   const validStartDate=new Date(req.query.startDate)
   const validEndDate=new Date(req.query.endDate)
+  let currentPostTime;
   //debugging date sent by client
   console.log("the start date is",validStartDate)
   console.log("the end date is",validEndDate)
@@ -140,9 +145,10 @@ app.get('/api/scrape/posts', async (req, res) => {
           const fullHref = await element.getAttribute('href');
           await page.waitForSelector('//span[@class="x193iq5w xeuugli x13faqbe x1vvkbs x10flsy6 x1nxh6w3 x1sibtaa xo1l8bm xzsf02u x1yc453h"]')
           const postTime = await page.locator('//span[@class="x193iq5w xeuugli x13faqbe x1vvkbs x10flsy6 x1nxh6w3 x1sibtaa xo1l8bm xzsf02u x1yc453h"]').allTextContents()
-          const PostTimeCheck=await parseDateString(postTime[0])
+          const PostTimeCheck=parseDateString(postTime[0])
+          currentPostTime=PostTimeCheck
           console.log(PostTimeCheck)
-          if (fullHref && fullHref !== '#' &&PostTimeCheck>=validStartDate && PostTimeCheck<=validEndDate){
+          if (fullHref && fullHref !== '#' && PostTimeCheck>=validStartDate && PostTimeCheck<=validEndDate){
             // Parse the URL and process it based on its structure
             console.log("the post condition passed let's scape this post")
             const urlObj = new URL(fullHref);
@@ -229,15 +235,12 @@ app.get('/api/scrape/posts', async (req, res) => {
 
                 if (images.length !== 0) {
                   for (const image of images) {
-                    try {
+                    
                       console.log("entering getting image url...")
                       const randomId= randomUUID()
                       const imageLink=`images/${profileName}-${randomId}.png`
                       await image.screenshot({ path: imageLink })
                       allImagesLink.push(imageLink)
-                    } catch (err) {
-                      console.log("err during pushing image to allImagesLink", (err))
-                    }
                   }
                 }
                 //if there is comment we will check whether the content is malicious or there is any exist link
@@ -273,6 +276,7 @@ app.get('/api/scrape/posts', async (req, res) => {
 
                             const driver = neo4j.driver(process.env.NEO4J_URL, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASS))
                             const session_forCommenter = driver.session({ database: process.env.NEO4J_DB })
+                            console.log(`the link of images are ${allImagesLink}`)
                             session_forCommenter.run(
                               `
                             MATCh (p:Post {postUrl:$cleanUrl})
@@ -369,7 +373,7 @@ app.get('/api/scrape/posts', async (req, res) => {
                   const allReactionsButtonLocator = pageLiker.locator('//div[@class="x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1n2onr6 x87ps6o x1lku1pv x1a2a7pz x1heor9g xnl1qt8 x6ikm8r x10wlt62 x1vjfegm x1lliihq"]');
                   await allReactionsButtonLocator.click();
                   // await pageLiker.locator('//@div[class="xb57i2i x1q594ok x5lxg6s x78zum5 xdt5ytf x6ikm8r x1ja2u2z x1pq812k x1rohswg xfk6m8 x1yqm8si xjx87ck xx8ngbg xwo3gff x1n2onr6 x1oyok0e x1odjw0f x1e4zzel x1tbbn4q x1y1aw1k x4uap5 xwib8y2 xkhd6sd]"')
-                  await pageLiker.waitForSelector('//div[@class="x6s0dn4 xkh2ocl x1q0q8m5 x1qhh985 xu3j5b3 xcfux6l x26u7qi xm0m39n x13fuv20 x972fbf x9f619 x78zum5 x1q0g3np x1iyjqo2 xs83m0k x1qughib xat24cr x11i5rnm x1mh8g0r xdj266r x2lwn1j xeuugli x18d9i69 x4uap5 xkhd6sd xexx8yu x1n2onr6 x1ja2u2z"]')
+                  await pageLiker.waitForSelector('//div[@class="x6s0dn4 xkh2ocl x1q0q8m5 x1qhh985 xu3j5b3 xcfux6l x26u7qi xm0m39n x13fuv20 x972fbf x9f619 x78zum5 x1q0g3np x1iyjqo2 xs83m0k x1qughib xat24cr x11i5rnm x1mh8g0r xdj266r x2lwn1j xeuugli x18d9i69 x4uap5 xkhd6sd xexx8yu x1n2onr6 x1ja2u2z"]//a')
                   while (true) {
                     const elements = await pageLiker.$$('//div[@class="x6s0dn4 xkh2ocl x1q0q8m5 x1qhh985 xu3j5b3 xcfux6l x26u7qi xm0m39n x13fuv20 x972fbf x9f619 x78zum5 x1q0g3np x1iyjqo2 xs83m0k x1qughib xat24cr x11i5rnm x1mh8g0r xdj266r x2lwn1j xeuugli x18d9i69 x4uap5 xkhd6sd xexx8yu x1n2onr6 x1ja2u2z"]//a');
                     if (elements.length === 0) break;
@@ -435,10 +439,6 @@ app.get('/api/scrape/posts', async (req, res) => {
               } catch (err) {
                 console.log(err)
               }
-
-
-
-
               //end of liker 
               uniqueLinks.add(
                 {
@@ -454,8 +454,11 @@ app.get('/api/scrape/posts', async (req, res) => {
           }
         }
       }
-
-      if (uniqueLinks.size === previousLength) {
+      //no link found so bottom or the time of the post doesn't reach
+      console.log(`The current post time is ${currentPostTime}`)
+      console.log(`the scrape should stop at ${validEndDate}`)
+    
+      if ((uniqueLinks.size === previousLength) && currentPostTime<=validEndDate) {
         break; // No new links found, probably reached the bottom
       }
       previousLength = uniqueLinks.size;
