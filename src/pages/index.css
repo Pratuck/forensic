@@ -1,0 +1,12 @@
+.my-container {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.my-container > * {
+    flex: 1 1 auto; /* This makes each child take equal space */
+}
+
+.my-container > :nth-child(4) {
+    flex-basis: 100%; /* This makes the fourth child take full width */
+}

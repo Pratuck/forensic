@@ -4,10 +4,17 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { firefox } from 'playwright';
 import neo4j from 'neo4j-driver'
+import { randomBytes, randomUUID } from "crypto"
 dotenv.config();
 
 const app = express();
 const port = 5000;
+
+//convert date to be comparable
+function parseDateString(dateStr) {
+  const cleanedStr = dateStr.replace(/(^\w+, )|( at )/g, ' ');
+  return new Date(cleanedStr);
+}
 
 app.use(bodyParser.json());
 
@@ -85,8 +92,14 @@ app.post('/api/scrape/info', async (req, res) => {
 //this api actually get all the post, likes, and content of the post
 app.get('/api/scrape/posts', async (req, res) => {
   const url = req.query.inputValue;
-  const browser = await firefox.launch({ headless: false });
-  const context = await browser.newContext();
+  console.log(req.query.startDate)
+  const validStartDate=new Date(req.query.startDate)
+  const validEndDate=new Date(req.query.endDate)
+  //debugging date sent by client
+  console.log("the start date is",validStartDate)
+  console.log("the end date is",validEndDate)
+  const browser = await firefox.launch({ headless: false});
+  const context = await browser.newContext({storageState:'playwright/.auth/user.json'});
   const page = await context.newPage();
   const uniqueLinks = new Set();
   let limit = 0;
@@ -101,23 +114,25 @@ app.get('/api/scrape/posts', async (req, res) => {
 
   try {
     await page.goto(url);
-    await page.getByRole('textbox', { name: 'Email address or phone number' }).click();
-    await page.getByRole('textbox', { name: 'Email address or phone number' }).fill(process.env.FACEBOOK_USER);
-    await page.locator('#login_popup_cta_form').getByRole('textbox', { name: 'Password' }).click();
-    await page.locator('#login_popup_cta_form').getByRole('textbox', { name: 'Password' }).fill(process.env.FACEBOOK_PASS);
-    await page.locator('#login_popup_cta_form').getByLabel('Accessible login button').click();
+    // await page.getByRole('textbox', { name: 'Email address or phone number' }).click();
+    // await page.getByRole('textbox', { name: 'Email address or phone number' }).fill(process.env.FACEBOOK_USER);
+    // await page.locator('#login_popup_cta_form').getByRole('textbox', { name: 'Password' }).click();
+    // await page.locator('#login_popup_cta_form').getByRole('textbox', { name: 'Password' }).fill(process.env.FACEBOOK_PASS);
+    // await page.locator('#login_popup_cta_form').getByLabel('Accessible login button').click();
     await page.waitForTimeout(1000)
     await page.waitForLoadState('networkidle');
     let previousLength = 0;
-    await page.waitForSelector("h1.x1heor9g")
-    const profileName = await page.locator("h1.x1heor9g").textContent();
+    console.log("Let's wait for the username...")
+    await page.waitForSelector('//h1[@class="x1heor9g x1qlqyl8 x1pd3egz x1a2a7pz"][not( contains(.,"Notification"))]')
+    const profileName = await page.locator('//h1[@class="x1heor9g x1qlqyl8 x1pd3egz x1a2a7pz"][not( contains(.,"Notification"))]').textContent();
+    console.log(`the profile name is ${profileName}`)
     while (true) {
       const elements = await page.$$('//div[@class="x1cy8zhl x78zum5 x1q0g3np xod5an3 x1pi30zi x1swvt13 xz9dl7a"]//a[@href="#"]');
       console.log("getting href...")
-      if (elements.length === 0) break; // If no such elements, exit the loop
+      if (elements.length === 0) break; // If no such elements, exit }the loop
 
       for (const element of elements) {
-        console.log("get first element...")
+        console.log(`get  element...`)
         if (await element.isVisible()) {
           await element.hover();
           await page.waitForTimeout(1000);
@@ -125,9 +140,11 @@ app.get('/api/scrape/posts', async (req, res) => {
           const fullHref = await element.getAttribute('href');
           await page.waitForSelector('//span[@class="x193iq5w xeuugli x13faqbe x1vvkbs x10flsy6 x1nxh6w3 x1sibtaa xo1l8bm xzsf02u x1yc453h"]')
           const postTime = await page.locator('//span[@class="x193iq5w xeuugli x13faqbe x1vvkbs x10flsy6 x1nxh6w3 x1sibtaa xo1l8bm xzsf02u x1yc453h"]').allTextContents()
-          if (fullHref && fullHref !== '#') {
+          const PostTimeCheck=await parseDateString(postTime[0])
+          console.log(PostTimeCheck)
+          if (fullHref && fullHref !== '#' &&PostTimeCheck>=validStartDate && PostTimeCheck<=validEndDate){
             // Parse the URL and process it based on its structure
-            console.log("continueing")
+            console.log("the post condition passed let's scape this post")
             const urlObj = new URL(fullHref);
             let cleanUrl = '';
             if (urlObj.hostname === 'web.facebook.com') {
@@ -136,20 +153,21 @@ app.get('/api/scrape/posts', async (req, res) => {
             if (urlObj.pathname.includes('/posts/')) {
               // Extract the part of the URL before any query parameters
               cleanUrl = `https://${urlObj.hostname}${urlObj.pathname}`;
-
-
             } else if (urlObj.pathname.includes('/permalink.php')) {
               // Reconstruct the URL with only the desired query parameters
               cleanUrl = `https://${urlObj.hostname}${urlObj.pathname}?story_fbid=${urlObj.searchParams.get('story_fbid')}&id=${urlObj.searchParams.get('id')}`;
             }
-            if (cleanUrl && limit <= 10) {
-              console.log("state1")
+            if (cleanUrl) {
+              console.log("let's clean the url of the post")
               const urlObjInput = new URL(url);
               //if web use &id but with www use ?id
               if (urlObjInput.pathname.includes('/profile.php')) {
-                console.log("state 1.1")
+                console.log("the link of the posst contains /profile.php ")
+              
                 const fixName = profileName.trim();
                 const cleanedProfilUrl = `https://${urlObjInput.hostname}${urlObjInput.pathname}?id=${urlObjInput.searchParams.get('id')}`
+                console.log(`the profile url is ${cleanedProfilUrl}`)
+                console.log(`the cleaned post url is ${cleanUrl}`)
                 try {
                   await session.run(
                     `
@@ -161,14 +179,17 @@ app.get('/api/scrape/posts', async (req, res) => {
                     ,
                     { "cleanUrl": cleanUrl, "postTime": postTime, "fixName": fixName, "cleanedProfilUrl": cleanedProfilUrl }
                   )
+                  
                 } catch (err) {
                   console.log(err)
                 }
+                console.log("built a->p profile.php")
               } else {
                 console.log(urlObjInput.pathname)
-                console.log("state 1.2")
+                console.log("the link contain /profile.php")
                 const cleanedProfilUrl = `https://${urlObjInput.hostname}${urlObjInput.pathname}`
                 const fixName = profileName.trim();
+
                 try {
                   await session.run(
                     `
@@ -184,7 +205,7 @@ app.get('/api/scrape/posts', async (req, res) => {
                   console.log(err)
                 }
               }
-              console.log("state1.5")
+              console.log("complete building a->p")
               //maybe doing some post scrape here, hopefully it will work ;D, also Commenter
               try {
                 console.log("state2-get commenter")
@@ -205,11 +226,14 @@ app.get('/api/scrape/posts', async (req, res) => {
                 const comments = await pageLiker.$$('//div[@class="x1r8uery x1iyjqo2 x6ikm8r x10wlt62 x1pi30zi"]')
                 //if there is link component inside the text maybe we should add link identifier here
                 //if there is img tag then get that url
+
                 if (images.length !== 0) {
                   for (const image of images) {
                     try {
                       console.log("entering getting image url...")
-                      const imageLink = await image.getAttribute("src")
+                      const randomId= randomUUID()
+                      const imageLink=`images/${profileName}-${randomId}.png`
+                      await image.screenshot({ path: imageLink })
                       allImagesLink.push(imageLink)
                     } catch (err) {
                       console.log("err during pushing image to allImagesLink", (err))

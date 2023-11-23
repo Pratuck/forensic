@@ -1,8 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
-
-function InputForm({ inputValue, setInputValue, isSubmitting,setIsSubmitting, setPostResult, setProjectName, projectName }) {
+import DatePicker from "react-datepicker";
+import '../pages/index.css'
+import DateTimePicker from 'react-datetime-picker';
+function InputForm({ inputValue, setInputValue, isSubmitting, setIsSubmitting, setPostResult, setProjectName, projectName }) {
   const eventSourceRef = useRef(null);
   const [isEventSourceClosed, setIsEventSourceClosed] = useState(false);
+
+  const [date, setDate] = useState(new Date());
+  // const [startDate, setStartDate] = useState();
+  // const [endDate, setEndDate] = useState();
+  const [dateTimeValueStart,setDateTimeValueStart]=useState();
+  const [dateTimeValueEnd,setDateTimeValueEnd]=useState();
+
+  // const handleChange = (range) => {
+  //   const [startDate, endDate] = range;
+  //   setStartDate(startDate);
+  //   setEndDate(endDate);
+  // };
+
 
   useEffect(() => {
     return () => {
@@ -38,10 +53,10 @@ function InputForm({ inputValue, setInputValue, isSubmitting,setIsSubmitting, se
 
     // Create a new EventSource
     try {
-      eventSourceRef.current = new EventSource(`http://localhost:5000/api/scrape/posts?inputValue=${encodeURIComponent(inputValue)}`);
+      eventSourceRef.current = new EventSource(`http://localhost:5000/api/scrape/posts?inputValue=${encodeURIComponent(inputValue)}&startDate=${dateTimeValueStart}&endDate=${dateTimeValueEnd}`);
       eventSourceRef.current.onmessage = (event) => {
         const newPost = JSON.parse(event.data);
-        if(newPost.post==="view"){
+        if (newPost.post === "view") {
           eventSourceRef.current.close()
           eventSourceRef.current = null;
           setIsEventSourceClosed(true); // Ensure this is set to prevent reopening
@@ -77,32 +92,52 @@ function InputForm({ inputValue, setInputValue, isSubmitting,setIsSubmitting, se
     setProjectName('');
   };
 
+
   // ...rest of your component
   return (
-    <form onSubmit={handleSubmit}>
-      <label>
-        Input URL:
+      <form onSubmit={handleSubmit}>
+        <label>
+          Input URL:
+          <input
+            type="text"
+            placeholder='profile Url'
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            disabled={isSubmitting}
+          />
+        </label>
+        Project Name:
         <input
           type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          placeholder='project name'
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
           disabled={isSubmitting}
         />
-      </label>
-      Project Name:
-      <input
-        type="text"
-        value={projectName}
-        onChange={(e) => setProjectName(e.target.value)}
-        disabled={isSubmitting}
-      />
-      <button type="submit" disabled={isSubmitting}>
-        Submit
-      </button>
-      <button type="button" onClick={handleCancel}>
-        Cancel
-      </button>
-    </form>
+        <label>
+          Start:
+        <DateTimePicker
+        onChange={setDateTimeValueStart}
+        value={dateTimeValueStart}
+        returnValue='range'
+        />
+        </label>
+        <label>
+          End:
+          <DateTimePicker
+          onChange={setDateTimeValueEnd}
+          value={dateTimeValueEnd}
+          returnValue='range'
+          />
+
+        </label>
+        <button type="submit" disabled={isSubmitting}>
+          Submit
+        </button>
+        <button type="button" onClick={handleCancel}>
+          Cancel
+        </button>
+      </form>
   );
 }
 

@@ -1,8 +1,14 @@
 // Home.js (or wherever your Home component is defined)
-import React from 'react';
+
 import InputForm from '../components/InputForm';
 import InfoResult from '../components/InfoResult';
 import PostResult from '../components/PostResult';
+import React, { useState } from 'react';
+import 'react-datepicker/dist/react-datepicker.css'
+import 'react-datetime-picker/dist/DateTimePicker.css';
+import 'react-calendar/dist/Calendar.css';
+import 'react-clock/dist/Clock.css';
+
 
 
 function Home({
@@ -20,8 +26,8 @@ function Home({
   // Render InputForm and InfoResult with the props if needed
   return (
     <div>
-      
       <h1>This is Css453 Project :D</h1>
+      <div className='my-container'>
       <InputForm
         inputValue={inputValue}
         setInputValue={setInputValue}
@@ -34,6 +40,10 @@ function Home({
       />
       <InfoResult infoResult={infoResult} />
       <PostResult postResult={postResult}/>
+      </div>
+
+
+      
     </div>
   );
 }

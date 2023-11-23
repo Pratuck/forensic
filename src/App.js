@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import Navbar from './components/index.js'; // Assuming Navbar is the default export from the index.js file
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/index.js'; // Make sure to import the correct Home component
+import View from './pages/view.js';
+import Report from './pages/report.js'
 
 function App() {
   const [inputValue, setInputValue] = useState('');
@@ -29,6 +31,13 @@ function App() {
             setProjectName={setProjectName}
           />
         } />
+        <Route path='/view' element={
+          <View/>
+        }/>
+        <Route path="/report" element={
+          <Report/>
+        }></Route>
+
       </Routes>
     </Router>
   );
