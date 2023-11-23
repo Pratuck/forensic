@@ -54,25 +54,31 @@ function View() {
   return (
     <div>
       <div>
-      {project.map((pro, index) => (
-        <div key={index}>
-          <h1>{pro.projectname}</h1>
-          <span>Project Start:{formatDateTime(pro.datetime)}</span>
-          {/* Add more components as needed */}
-        </div>
-      ))}
+        {project.map((pro, index) => (
+          <div key={index}>
+            <h1>{pro.projectname}</h1>
+            <span>Project Start:{formatDateTime(pro.datetime)}</span>
+            {/* Add more components as needed */}
+          </div>
+        ))}
       </div>
       <div>
-      {postData.map((post, index) => (
-        <div key={index}>
-          <p>------------------------------------------------------------------------------------------------------------------------</p>
-          <h3 >{post.postUrl}</h3>
-          <span><span style={{ color: 'blue' }}>Post content:</span>{post.text}</span>
-          <p><span style={{ color: 'blue' }}>Post timestamp:</span> {post.datetime}</p>
-          {/* Add more components as needed */}
-        </div>
-      ))}
+        {postData.map((post, index) => (
+          <div key={index}>
+            <p>------------------------------------------------------------------------------------------------------------------------</p>
+            <h3 >{post.postUrl}</h3>
+            <span><span style={{ color: 'blue' }}>Post content:</span>{post.text}</span>
+            <p><span style={{ color: 'blue' }}>Post timestamp:</span> {post.datetime}</p>
+            <p><span style={{ color: 'blue' }}>Images:</span> </p>
+            {
+              post.image.map((element, index) => (
+                <img key={index} src={element} alt={element}  />
+              ))
+            }
+          </div>
+        ))}
       </div>
+
     </div>
   );
 }

@@ -238,9 +238,9 @@ app.get('/api/scrape/posts', async (req, res) => {
                     
                       console.log("entering getting image url...")
                       const randomId= randomUUID()
-                      const imageLink=`images/${profileName}-${randomId}.png`
+                      const imageLink=`public/images/${profileName.trim()}-${randomId}.png`
                       await image.screenshot({ path: imageLink })
-                      allImagesLink.push(imageLink)
+                      allImagesLink.push(imageLink.slice(7))
                   }
                 }
                 //if there is comment we will check whether the content is malicious or there is any exist link
@@ -458,8 +458,11 @@ app.get('/api/scrape/posts', async (req, res) => {
       console.log(`The current post time is ${currentPostTime}`)
       console.log(`the scrape should stop at ${validEndDate}`)
     
-      if ((uniqueLinks.size === previousLength) && currentPostTime<=validEndDate) {
+      if ((uniqueLinks.size === previousLength)&& (currentPostTime<=validEndDate)) {
         break; // No new links found, probably reached the bottom
+      }
+      if(currentPostTime<=validEndDate){
+        break;
       }
       previousLength = uniqueLinks.size;
 
