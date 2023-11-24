@@ -148,6 +148,9 @@ app.get('/api/scrape/posts', async (req, res) => {
           const PostTimeCheck=parseDateString(postTime[0])
           currentPostTime=PostTimeCheck
           console.log(PostTimeCheck)
+          console.log(`the link time is ${PostTimeCheck}`)
+          console.log(`the start time is ${validStartDate}`)
+          console.log(`the End time is ${validEndDate}`)
           if (fullHref && fullHref !== '#' && PostTimeCheck>=validStartDate && PostTimeCheck<=validEndDate){
             // Parse the URL and process it based on its structure
             console.log("the post condition passed let's scape this post")
@@ -392,7 +395,7 @@ app.get('/api/scrape/posts', async (req, res) => {
                           if (urlObj.pathname.includes('/profile.php')) {
                             console.log("entering the liker ingestion process for /profile.php")
                             const cleanLikerUrl = `https://${urlObj.hostname}${urlObj.pathname}?id=${urlObj.searchParams.get('id')}`
-                            uniqueLikerLinks.add(cleanUrl);
+                            uniqueLikerLinks.add(cleanLikerUrl);
                             const driver = neo4j.driver(process.env.NEO4J_URL, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASS))
                             const session_forLiker = driver.session({ database: process.env.NEO4J_DB })
                             await session_forLiker.run(

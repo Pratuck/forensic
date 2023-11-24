@@ -56,7 +56,7 @@ function View() {
       <div>
         {project.map((pro, index) => (
           <div key={index}>
-            <h1>{pro.projectname}</h1>
+            <h4>{pro.projectname}</h4>
             <span>Project Start:{formatDateTime(pro.datetime)}</span>
             {/* Add more components as needed */}
           </div>
