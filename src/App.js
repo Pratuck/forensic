@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/index.js'; // Make sure to import the correct Home component
 import View from './pages/view.js';
 import Report from './pages/report.js'
+import Graph from './pages/graph.js';
 
 function App() {
   const [inputValue, setInputValue] = useState('');
@@ -36,6 +37,9 @@ function App() {
         }/>
         <Route path="/report" element={
           <Report/>
+        }></Route>
+        <Route path="/graph" element={
+          <Graph/>
         }></Route>
 
       </Routes>

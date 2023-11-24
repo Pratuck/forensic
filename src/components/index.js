@@ -19,6 +19,9 @@ const Navbar = () => {
 					<NavLink to="/Report" >
 						Report
 					</NavLink>
+					<NavLink to="/graph">
+						Graph
+					</NavLink>
 				</NavMenu>
 			</Nav>
 		</>

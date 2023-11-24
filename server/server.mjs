@@ -157,16 +157,19 @@ app.get('/api/scrape/posts', async (req, res) => {
               urlObj.hostname = 'www.facebook.com';
             }
             if (urlObj.pathname.includes('/posts/')) {
-              // Extract the part of the URL before any query parameters
+ 
               cleanUrl = `https://${urlObj.hostname}${urlObj.pathname}`;
             } else if (urlObj.pathname.includes('/permalink.php')) {
-              // Reconstruct the URL with only the desired query parameters
+
               cleanUrl = `https://${urlObj.hostname}${urlObj.pathname}?story_fbid=${urlObj.searchParams.get('story_fbid')}&id=${urlObj.searchParams.get('id')}`;
             }
             if (cleanUrl) {
               console.log("let's clean the url of the post")
               const urlObjInput = new URL(url);
               //if web use &id but with www use ?id
+              if (urlObjInput.hostname === 'web.facebook.com') {
+                urlObjInput.hostname = 'www.facebook.com';
+              }
               if (urlObjInput.pathname.includes('/profile.php')) {
                 console.log("the link of the posst contains /profile.php ")
               
@@ -387,17 +390,18 @@ app.get('/api/scrape/posts', async (req, res) => {
                             urlObj.hostname = 'www.facebook.com';
                           }
                           if (urlObj.pathname.includes('/profile.php')) {
+                            console.log("entering the liker ingestion process for /profile.php")
                             const cleanLikerUrl = `https://${urlObj.hostname}${urlObj.pathname}?id=${urlObj.searchParams.get('id')}`
                             uniqueLikerLinks.add(cleanUrl);
                             const driver = neo4j.driver(process.env.NEO4J_URL, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASS))
                             const session_forLiker = driver.session({ database: process.env.NEO4J_DB })
                             await session_forLiker.run(
-                              `MATCH (p:Post {postUrl: $cleanUrl,postContent:$postText})
+                              `MATCH (p:Post {postUrl: $cleanUrl})
                              MERGE (a:Account {profileUrl:$cleanLikerUrl})
                                  ON CREATE SET a.username = $profileName
                              MERGE (a)-[:REACTED]->(p)`
                               ,
-                              { "cleanUrl": cleanUrl, "profileName": profileName, "cleanLikerUrl": cleanLikerUrl, "postText": postText }
+                              { "cleanUrl": cleanUrl, "profileName": profileName, "cleanLikerUrl": cleanLikerUrl }
                             )
                           } else {
                             const cleanLikerUrl = `https://${urlObj.hostname}${urlObj.pathname}`
@@ -405,12 +409,12 @@ app.get('/api/scrape/posts', async (req, res) => {
                             const driver = neo4j.driver(process.env.NEO4J_URL, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASS))
                             const session_forLiker = driver.session({ database: process.env.NEO4J_DB })
                             await session_forLiker.run(
-                              `MATCH (p:Post {postUrl: $cleanUrl,postContent:$postText})
+                              `MATCH (p:Post {postUrl: $cleanUrl})
                              MERGE (a:Account {profileUrl:$cleanLikerUrl})
                                  ON CREATE SET a.username = $profileName
                              MERGE (a)-[:REACTED]->(p)`
                               ,
-                              { "cleanUrl": cleanUrl, "profileName": profileName, "cleanLikerUrl": cleanLikerUrl, "postText": postText }
+                              { "cleanUrl": cleanUrl, "profileName": profileName, "cleanLikerUrl": cleanLikerUrl }
                             )
                           }
                         }
