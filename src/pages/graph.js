@@ -125,30 +125,26 @@ const Graph = () => {
     const network = useRef(null);
     useEffect(() => {
         fetchData();
-    });
+    }, []); 
 
     useEffect(() => {
         if (nodes.length > 0 && edges.length > 0) {
+            console.log('Initializing network with fetched data');
             network.current = new Network(container.current, { nodes, edges }, {});
+    
             network.current.on('click', params => {
                 if (params.nodes.length > 0) {
                     const nodeId = params.nodes[0];
                     setSelectedNodeId(nodeId);
                 }
             });
-
         }
-
-
-
-
-    }, [nodes, edges]);
+    }, [nodes, edges]);;
 
     const renderNodeDetails = () => {
         if (!selectedNodeId) return null;
         const node = nodeMap.get(selectedNodeId);
         if (!node) return <div>No details available for the selected node.</div>;
-        // <p><span style={{ color: 'blue' }}>Post timestamp:</span> {post.datetime}</p>
         return (
             <div style={{ display: 'flex' }}>
                 <div>
