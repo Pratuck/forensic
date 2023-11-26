@@ -145,7 +145,7 @@ const Graph = () => {
     const renderNodeDetails = () => {
         if (!selectedNodeId) return null;
         const node = nodeMap.get(selectedNodeId);
-        if (!node) return <div>No details available for the selected node.</div>;
+        if (!node) return <div>No node selected.</div>;
         return (
             <div style={{ display: 'flex' ,borderBottom:'solid'}}>
                 <div>

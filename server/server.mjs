@@ -100,6 +100,7 @@ app.post('/api/scrape/info', async (req, res) => {
 
 //this api actually get all the post, likes, and content of the post
 app.get('/api/scrape/posts', async (req, res) => {
+  let startScrape = new Date();
   const url = req.query.inputValue;
   console.log(req.query.startDate)
   console.log(req.query.endDate)
@@ -463,6 +464,9 @@ app.get('/api/scrape/posts', async (req, res) => {
             } else {
               res.write(`data: ${JSON.stringify({ post: "view", postTime: "-----------" })}\n\n`);
               res.end()
+              let endScrapeTime=new Date()
+              let differenceInMilliseconds = endScrapeTime.getTime() - startScrape.getTime();
+              console.log(differenceInMilliseconds/1000)
             }
           }
         }
@@ -471,10 +475,10 @@ app.get('/api/scrape/posts', async (req, res) => {
       console.log(`The current post time is ${currentPostTime}`)
       console.log(`the scrape should stop at ${validEndDate}`)
     
-      if ((uniqueLinks.size === previousLength)&& (currentPostTime<=validEndDate)) {
+      if ((uniqueLinks.size === previousLength)&& (currentPostTime<=validStartDate)) {
         break; // No new links found, probably reached the bottom
       }
-      if(currentPostTime<=validEndDate){
+      if(currentPostTime<=validStartDate){
         break;
       }
       previousLength = uniqueLinks.size;
@@ -484,12 +488,18 @@ app.get('/api/scrape/posts', async (req, res) => {
     }
 
     res.end()
+    let endScrapeTime=new Date()
+    let differenceInMilliseconds = endScrapeTime.getTime() - startScrape.getTime();
+    console.log(differenceInMilliseconds/1000)
   } catch (error) {
     if (!res.headersSent) {
       res.status(500).json({ error: 'Scraping failed', details: error.message });
     } else {
       // If we've already started streaming, just end the stream.
       res.end();
+      let endScrapeTime=new Date()
+      let differenceInMilliseconds = endScrapeTime.getTime() - startScrape.getTime();
+      console.log(differenceInMilliseconds/1000)
     }
   } finally {
     await browser.close();
