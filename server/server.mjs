@@ -45,16 +45,22 @@ app.post('/api/create-neo4j-session', async (req, res) => {
   const projectName = req.body.projectName
   const session = driver.session({ database: process.env.NEO4J_DB })
   let projectTime = new Date();
-
+  const url = req.body.inputValue;
+  const validStartDate=new Date(req.body.dateTimeValueStart)
+  const validEndDate=new Date(req.body.dateTimeValueEnd)
   // Convert the Date object to an ISO 8601 string
   projectTime = projectTime.toISOString();
 
   try {
     // Make sure you have the rights to create a new database
     await session.run(
-      `MERGE (:Project {projectname: $projectName,datetime: $projectTime})  `
+      `MERGE (:Project {projectname: $projectName,
+        datetime: $projectTime,
+        startdatetime: $validStartDate,
+        enddatetime:$validEndDate,
+      input:$url}) `
       ,
-      { "projectName": projectName, "projectTime": projectTime }
+      { "projectName": projectName, "projectTime": projectTime, "validStartDate":validStartDate.toISOString(),"validEndDate":validEndDate.toISOString(),"url":url}
     )
     res.json({ message: ` '${projectName}' created successfully.` });
   } catch (error) {
@@ -63,7 +69,7 @@ app.post('/api/create-neo4j-session', async (req, res) => {
   }
 })
 
-
+//we do not use this api anymore
 app.post('/api/scrape/info', async (req, res) => {
   const url = await req.body.inputValue;
   const browser = await firefox.launch({

@@ -43,7 +43,7 @@ function InputForm({ inputValue, setInputValue, isSubmitting, setIsSubmitting, s
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ projectName }),
+        body: JSON.stringify({ projectName,dateTimeValueStart,dateTimeValueEnd,inputValue }),
       });
     } catch (error) {
       console.error('Error:', error);
