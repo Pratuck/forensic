@@ -1,11 +1,11 @@
 import { defineConfig, devices,PlaywrightTestConfig} from 'playwright/test';
 
 const config: PlaywrightTestConfig={
-  testMatch:["scrapes/post2.test.ts"],
+  testMatch:["scrapes/auth.setup.ts"],
   use:{
     headless: false,
-    screenshot:"on",
-    video:"on"
+    screenshot:"off",
+    video:"off"
   },
   reporter:[["dot"],["json",{
     outputFile: "jsonReports/jsonReport.json"
