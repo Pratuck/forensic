@@ -8,6 +8,7 @@ const Graph = () => {
     const [edges, setEdges] = useState([]);
     const [selectedNodeId, setSelectedNodeId] = useState([]);
     const nodeMap = useRef(new Map()).current;
+    
     const fetchData = async () => {
         const driver = neo4j.driver("neo4j://127.0.0.1:7687", neo4j.auth.basic("neo4j", "pkp1212312121"));
         const session = driver.session({ database: "socialforen" });
@@ -146,7 +147,7 @@ const Graph = () => {
         const node = nodeMap.get(selectedNodeId);
         if (!node) return <div>No details available for the selected node.</div>;
         return (
-            <div style={{ display: 'flex' }}>
+            <div style={{ display: 'flex' ,borderBottom:'solid'}}>
                 <div>
                     <div><p><span style={{ color: 'blue' }}>Node ID: </span>{node.id}</p></div>
                     <div><p><span style={{ color: 'blue' }}>Node Label: </span>{node.label}</p></div>
@@ -161,6 +162,7 @@ const Graph = () => {
                     ))}
 
                 </div>
+    
             </div>
         );
     };

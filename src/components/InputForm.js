@@ -106,7 +106,7 @@ function InputForm({ inputValue, setInputValue, isSubmitting, setIsSubmitting, s
             disabled={isSubmitting}
           />
         </label>
-        Project Name:
+        Task Name:
         <input
           type="text"
           placeholder='project name'
