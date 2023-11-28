@@ -11,3 +11,4 @@ docker run \
     -v $HOME/neo4j/plugins:/plugins \
     --env NEO4J_AUTH=neo4j/pkp1212312121 \
     pratuck/neo4j
+    
