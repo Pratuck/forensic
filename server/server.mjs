@@ -23,20 +23,12 @@ app.use(bodyParser.json());
 
 
 // Allow requests from your React app's domain (replace with your React app's URL)
-const allowedOrigins = ['http://localhost:3000'];
+app.use(cors({
+  origin: '*', // Allow all origins
+  credentials: true // Enable credentials
+}));
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true
-  })
-);
+// Handle pre-flight requests for all routes
 app.options('*', cors()); // include before other routes
 
 

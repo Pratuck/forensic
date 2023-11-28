@@ -1,0 +1,95 @@
+//this get all the post links, this is for testing if everything seems right this will be add to one api
+app.post('/api/scrape/posts', async (req, res) => {
+  const  url  = await req.body.inputValue;
+  const browser =await chromium.launch({headless: true,});
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const uniquePosts = {};
+  try {
+    await page.goto(url);
+    await page.getByRole('textbox', { name: 'Email address or phone number' }).click();
+    await page.getByRole('textbox', { name: 'Email address or phone number' }).fill(process.env.FACEBOOK_USER);
+    await page.locator('#login_popup_cta_form').getByRole('textbox', { name: 'Password' }).click();
+    await page.locator('#login_popup_cta_form').getByRole('textbox', { name: 'Password' }).fill(process.env.FACEBOOK_PASS);
+    await page.locator('#login_popup_cta_form').getByLabel('Accessible login button').click();
+    await page.waitForLoadState('networkidle');
+    const collectedLinks = new Set();
+    let previousLength = 0;
+
+    const links = await page.$$('a[href="#"]');
+    for (const link of links) {
+      try{
+      await link.hover({ timeout: 2000 });
+      await page.waitForTimeout(100); // Adjust timeout as needed
+      const href = await page.evaluate(el => el.getAttribute('href'), link);
+      if (href !== '#' && href.startsWith('https://web.facebook.com/permalink.php')) {// Add the href to the Set of collected links
+      console.log(href)
+        const urlObj = new URL(href);
+          const params = urlObj.searchParams;
+          const storyFbid = params.get('story_fbid');
+          const id = params.get('id');  
+          // Use a combination of story_fbid and id as the unique key
+          const uniqueKey = `${storyFbid}_${id}`;
+          if (storyFbid && id && !uniquePosts[uniqueKey]) {
+            // Create a new link that only includes the story_fbid and id parameters
+            const cleanLink = `https://web.facebook.com/permalink.php?story_fbid=${storyFbid}&id=${id}`;
+            uniquePosts[uniqueKey] = cleanLink; // Store the clean link if the key is unique
+          }
+      }
+    }catch(err){
+      console.error('Error during hover:', err);
+      continue; // Skip to the next iteration of the loop
+    }
+    
+    }
+  
+    while (true) {
+      await page.waitForSelector('a', { timeout: 5000 }); // Adjust timeout as needed
+      // Retrieve the links
+      const links = await page.$$eval('a', (as) => as.map(a => a.href));
+      //the link of the post is usually start with permalink.php
+      links.forEach(link => {
+        if (link.startsWith('https://web.facebook.com/permalink.php')) {
+          const urlObj = new URL(link);
+          const params = urlObj.searchParams;
+          const storyFbid = params.get('story_fbid');
+          const id = params.get('id');
+          
+          // Use a combination of story_fbid and id as the unique key
+          const uniqueKey = `${storyFbid}_${id}`;
+      
+          if (storyFbid && id && !uniquePosts[uniqueKey]) {
+            // Create a new link that only includes the story_fbid and id parameters
+            const cleanLink = `https://web.facebook.com/permalink.php?story_fbid=${storyFbid}&id=${id}`;
+            uniquePosts[uniqueKey] = cleanLink; // Store the clean link if the key is unique
+          }
+        }
+      });
+      
+    
+          // Compare the length to see if new links were added
+      if (collectedLinks.size === previousLength) {
+            // No new links found on this scroll, maybe end the loop
+        break;
+      }
+      previousLength = collectedLinks.size;
+      // Scroll down
+      await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
+          
+      // Wait for any lazy-loaded content to load
+      await page.waitForTimeout(1000); // Adjust timeout as needed
+    }
+    const arrayLinks = Object.values(uniquePosts);
+    const response = { result: arrayLinks };
+    res.status(200).json(response);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Scraping failed' });
+  } finally {
+    await browser.close(); // Make sure to close the browser
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});

@@ -1,0 +1,22 @@
+import React from 'react';
+function InputForm({ inputValue, setInputValue, setInfoResult, isSubmitting, setIsSubmitting, setPostResult ,setProjectName,projectName}) {
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!isSubmitting) {
+      await setIsSubmitting(true);
+
+      try {
+        // Make the first POST request ....Maybe we don't need it
+        // const infoResponse = await fetch('http://localhost:5000/api/scrape/info', {
+        //   method: 'POST',
+        //   headers: {
+        //     'Content-Type': 'application/json',
+        //   },
+        //   body: JSON.stringify({ inputValue }),
+        // });
+        const neo4jResponse= await fetch('http://localhost:5000/api/create-neo4j-session',{
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
