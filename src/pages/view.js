@@ -12,7 +12,7 @@ function View() {
 
   const getProject = async () => {
     const driver = neo4j.driver("neo4j://127.0.0.1:7687", neo4j.auth.basic("neo4j", "pkp1212312121"));
-    const session = driver.session({ database: "socialforen" });
+    const session = driver.session({ database: "neo4j" });
     try {
       const result = await session.run(`MATCH (pro:Project) return pro`);
       const formattedProjects = result.records.map(record => record.get('pro').properties);
@@ -26,7 +26,7 @@ function View() {
 
   const getPost = async () => {
     const driver = neo4j.driver("neo4j://127.0.0.1:7687", neo4j.auth.basic("neo4j", "pkp1212312121"));
-    const session = driver.session({ database: "socialforen" });
+    const session = driver.session({ database: "neo4j" });
     try {
       const resultPost = await session.run(`MATCH (post:Post) return post`);
       const formattedPostResult = resultPost.records.map(record => record.get('post').properties);

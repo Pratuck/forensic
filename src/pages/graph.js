@@ -11,7 +11,7 @@ const Graph = () => {
     
     const fetchData = async () => {
         const driver = neo4j.driver("neo4j://127.0.0.1:7687", neo4j.auth.basic("neo4j", "pkp1212312121"));
-        const session = driver.session({ database: "socialforen" });
+        const session = driver.session({ database: "neo4j" });
         try {
 
             const accountResult = await session.run(`MATCH (account:Account) return account`);
